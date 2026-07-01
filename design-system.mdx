@@ -1,0 +1,277 @@
+* * *
+
+### name: Gamification Design System Spec  
+route: /theme/gamification-spec  
+menu: Design System
+
+### Gamification Variant: Engagement-First Specification
+
+**Status:** Active | **Target Platform:** React Native (iOS / Android) | **Focus:** Gamified Budgeting
+
+This specification defines the strict visual, architectural, and behavioral rules required to shift our existing React Native platform from a *utility-first* tool to an *engagement-first* experience. All new features and component refactors must adhere strictly to these principles.
+
+* * *
+
+### 1\. Core Psychological Strategy
+
+We split our interface architecture into two distinct psychological layers based on the **Octalysis Framework**. Every screen must explicitly balance these two states:
+
+### White Hat UI (Empowerment & Growth)
+
+*   **Purpose:** Celebrates sound financial behavior, wealth generation, and consistency.
+*   **UI Rules:** Use wide layouts, smooth progress arcs, large milestone modals, and high-saturation celebratory overlays.
+*   **Application:** Savings goals, hitting budget limits, logging transitions.
+
+### Black Hat UI (Urgency & Loss Avoidance)
+
+*   **Purpose:** Triggers immediate cognitive action when budgets are critically threatened, without inducing tracking anxiety.
+*   **UI Rules:** High-contrast pulsing elements, structural countdown labels, and visibility of decaying streak blocks.
+*   **Application:** Approaching category limits, unlogged daily entries, streak expiration alerts.
+
+* * *
+
+### 2\. Global Token Sheet Architecture
+
+Do not use standard generic neutral palettes. All components must import values from our explicit behavioral design token dictionary:
+
+typescript
+
+    export const gamificationTokens = {
+      colors: {
+        // Structural System (Neobrutalist Arcade Dark-Mode)
+        bgMain: '#0F0F12',        // Deep obsidian canvas workspace
+        bgCard: '#1C1C24',        // High-contrast container surface
+        borderBold: '#000000',    // Flat hard black edge lines
+        textMain: '#FFFFFF',      // High-readability header text
+        textMuted: '#9E9EAF',     // Secondary descriptive labeling
+    
+        // Behavioral States (White Hat vs Black Hat)
+        financialSurplus: '#10B981', // Mint Green: Safe boundaries / surplus cash flow
+        financialDeficit: '#EF4444', // Crimson Red: Broken constraints / damaged shields
+        
+        // Core Game Mechanics
+        streakActive: '#FF5722',     // Blaze Orange: Daily log momentum tracking
+        xpPoints: '#3B82F6',         // Kinetic Blue: Leveling up layout points
+    
+        // Value Rarity Systems (Asset Tracking & Long-term Vaults)
+        rarityCommon: '#A0A0B0',     // Base entry assets
+        rarityEpic: '#8B5CF6',       // Intermediate milestone flags
+        rarityLegendary: '#F59E0B',  // Radiant Gold: Reserved for savings achievements
+      },
+      radii: {
+        card: 18,                    // Soft "bubble-like" tactile container edges
+        pill: 9999,                  // Fully rounded badge profiles
+      },
+      motion: {
+        springElastic: { damping: 10, stiffness: 100, mass: 0.6 },
+        springTight: { damping: 15, stiffness: 150 }
+      }
+    };
+    
+
+Use code with caution.
+
+* * *
+
+### 3\. Structural Code Component Standards
+
+To maintain a cohesive tactile feel across our React Native application, you must enforce the following architecture rules on these key primitive wrappers:
+
+### A. The Tactile Button Primitive
+
+*   **Rule:** Standard opacity changes (`TouchableOpacity`) are strictly forbidden for primary action buttons.
+*   **Requirement:** Buttons must feature a physical simulated depth using a solid bottom layer. On press, the top layer must actively offset along the Y-axis via a native spring layout.
+
+tsx
+
+    // Enforced implementation pattern:
+    import React from 'react';
+    import { Pressable, View } from 'react-native';
+    import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+    
+    // 1. Maintain a structural background view acting as the "drop shadow block"
+    // 2. Wrap the active surface inside a hardware-accelerated Animated.View
+    // 3. Drive the transition smoothly using withSpring() values matching the motion tokens
+    
+
+Use code with caution.
+
+### B. The Budget "Shield" Progress Bar
+
+*   **Rule:** Financial data must not be displayed using flat, static linear indicators.
+*   **Requirement:** Categories act as structural health shields. If spending is below 80%, use a standard static layout filled with `financialSurplus`. The second a category breaks past 80%, the component must dynamically switch to `financialDeficit` and immediately initiate a persistent opacity fade-loop to demand defensive user attention.
+
+* * *
+
+### 4\. Mandatory Tactile Design Principles
+
+To ensure our application delivers a highly polished "game feel" rather than acting as a dry accounting spreadsheet, every developer must implement the following guidelines:
+
+1.  **The "Juice" Requirement:** Every point increase or reward claim must be accompanied by visual feedback. Use lightweight canvas configurations or custom animated node collections to deploy dynamic scatter animations across the coordinate layout.
+2.  **Physical Touch Validation:** Never let a significant event happen silently. Hook directly into `expo-haptics` or `react-native-haptic-feedback`. Deliver a subtle tap on entry creation, a moderate snap on button engagement, and an assertive triple-pulse sequence whenever a major saving vault is successfully cleared.
+3.  **The Streak Buffer Strategy:** Never punish a user harshly for real-world volatility. Budgeting apps fail when users abandon them out of shame from breaking a streak. Build an XP-purchasable "Streak Shield" token into the backend workflow to allow active retention recovery.
+
+* * *
+
+### 5\. UI Layout Audit Checklist
+
+Before launching any new screens or feature flows into production, verify they pass these engagement criteria:
+
+*   Is the primary call-to-action utilizing a physical, pressable design rather than a flat hyperlink?
+*   Does the screen canvas maintain deep contrast against primary colors to ensure rewards pop visually?
+*   Are behavioral indicators (like current active streaks or profile XP) highly visible at the initial layout layer?
+*   Does the interface refrain from shaming the user during financial deficit states, offering actionable escape loops instead?
+
+* * *
+
+### name: AI Agent Engineering Rules: Engagement-First Layouts
+route: /theme/agent-rules
+menu: Architecture System
+
+### SYSTEM SPECIFICATION: Engagement-First Layout Enforcements
+**Target Systems:** AI Engineering Agents, LLM Code Generators, Co-Pilot Scripts
+**App Domain:** Gamified FinTech / Personal Budgeting Framework
+**Platform Constraint:** Expo React Native (iOS / Android)
+You are an advanced AI engineering agent tasked with maintaining, refactoring, or generating page files within this codebase. You are strictly forbidden from writing boilerplate, flat, corporate-utility UI layouts. Every layout layer must prioritize user intent and psychological validation loops over data presentation.
+
+---
+
+### 1. Core Evaluation Criteria (The Anti-Patterns)
+When reading any screen file in this repository, you must immediately audit it for the structural design flaws present in the following legacy code snippet.
+
+### Case Study: The Legacy Anti-Pattern Code
+tsx
+
+```
+// ❌ ANTI-PATTERN: DO NOT REPLICATE THIS LAYOUT ARCHITECTURE
+import * as Linking from 'expo-linking';
+import { Redirect } from 'expo-router';
+import { useState } from 'react';
+import { Alert, StyleSheet, Text, View } from 'react-native';
+
+import { AppScreen, EmptyState, Field, PillButton, ProgressBar, SectionCard, SectionHeading, StatChip } from '@/components/AppUI';
+import { AppColors } from '@/constants/theme';
+import { computeHoursRequired, getAffordabilityProgress, getBudgetSnapshot, getWishlistInsight } from '@/lib/budget';
+import { formatCurrency, formatFriendlyDate, formatHours } from '@/lib/formatters';
+import { fireEntryCreatedHaptic, fireVaultClearHaptic } from '@/lib/haptics';
+import { useBudgetStore } from '@/store/useBudgetStore';
+
+// ... Logic and formatting functions ...
+
+export default function WishlistScreen() {
+  // ... Store hooks ...
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [cost, setCost] = useState('');
+  const [url, setUrl] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  if (!profile || !snapshot) { return <Redirect href="/onboarding" />; }
+  const insight = getWishlistInsight(wishlistItems, snapshot);
+
+  // ... Handlers ...
+
+  return (
+    <AppScreen>
+      <SectionHeading eyebrow="Wishlist" title="Make wants wait" />
+
+      {/* 🔴 CRITICAL FLAW 1: Static input fields take up the most valuable screen space.
+          This forces 80% of users to stare at entry tools when they only visited to track progress. */}
+      <SectionCard accentColor={AppColors.sky} title={editingId ? 'Edit wish' : 'Add wish'}>
+        <Field label="Item name" onChangeText={setName} value={name} />
+        <Field keyboardType="decimal-pad" label="Cost (ZAR)" onChangeText={setCost} value={cost} />
+        <Field label="URL (optional)" onChangeText={setUrl} value={url} />
+        <View style={styles.actionRow}>
+          {/* 🔴 CRITICAL FLAW 2: Uses standard flat buttons (PillButton) instead of deep tactile primitives. */}
+          <PillButton label={editingId ? 'Save' : 'Add'} onPress={handleSubmit} />
+        </View>
+      </SectionCard>
+
+      {/* 🔴 CRITICAL FLAW 3: Behavioral triggers like snapshot.isRedZone are treated as flat text colors,
+          violating Black Hat UI rules which demand active, pulsing animation containers. */}
+      <SectionCard accentColor={AppColors.limeDark} title="Affordability snapshot">
+        <View style={styles.statRow}>
+          <StatChip label="Bank" tone={snapshot.isRedZone ? 'red' : 'amber'} value={formatCurrency(snapshot.savingsBank)} />
+        </View>
+      </SectionCard>
+
+      {/* ... Remainder of flat mapping loop ... */}
+    </AppScreen>
+  );
+}
+```
+
+Use code with caution.
+
+---
+
+### 2. Mandatory Structural Rules For All Pages
+To fix the anti-patterns listed above, you must process current and future screens against these execution directives:
+
+### Rule A: User Intent Alignment (No Static Entry Forms)
+
+- **The Intent Split:** 80% of user sessions are for check-ins (Status Tracking); only 20% are for active entry.
+- **Execution:** You must never render complex input forms as permanent, top-level layout components. Input forms must be abstracted behind an animated action overlay (e.g., a Bottom Sheet Modal or a dedicated input page) summoned by a permanent Floating Action Button (FAB).
+
+### Rule B: Enforce Tactile Component Primitives
+
+- **Execution:** Stop importing standard flat `PillButton` wrappers for primary actions. You must use the `TactileButton` structure. Buttons require a solid base drop-shadow layer where the button surface actively transitions downwards along the Y-axis using an elastic spring constant on press.
+
+### Rule C: Black Hat UI Integration (Deficit Defenses)
+
+- **Execution:** If a system calculation evaluates to an urgent state (such as `snapshot.isRedZone` or a depleted category shield), do not simply pass a red string value to a label. You must wrap the parent card component in a native hardware-accelerated looping pulse animation using `withRepeat` and `withSequence` to establish a sense of visual urgency.
+
+---
+
+### 3. Reference Refactoring Pattern
+When editing page layouts, reorganize the component tree to reflect the following user-intent hierarchy:
+tsx
+
+```
+// CONFORMANCE GOLD STANDARD: USE THIS ARCHITECTURE FOR ALL SCREEN OUTPOSTS
+export default function RefactoredWishlistScreen() {
+  const [formVisible, setFormVisible] = useState(false);
+  // ... hooks and states ...
+
+  return (
+    <AppScreen>
+      {/* Layer 1: Context & Core Heading */}
+      <SectionHeading eyebrow="Wishlist" title="Make wants wait" />
+
+      {/* Layer 2: Status & Validation First (Highest Intent Zone) */}
+      <AnimatedDeficitWrapper isActive={snapshot.isRedZone}>
+        <SectionCard title="Affordability Snapshot">
+          <StatRow bank={snapshot.savingsBank} isRedZone={snapshot.isRedZone} />
+        </SectionCard>
+      </AnimatedDeficitWrapper>
+
+      {/* Layer 3: The Board / Active Progress List */}
+      <SectionCard title="Wishlist Board">
+        <InteractiveWishList items={insight.activeItems} />
+      </SectionCard>
+
+      {/* Layer 4: Floating Call-to-Action Overlay Trigger */}
+      <FloatingActionWrapper>
+        <TactileButton title="✨ Capture New Wish" onPress={() => setFormVisible(true)} />
+      </FloatingActionWrapper>
+
+      {/* Layer 5: Dedicated Non-Intrusive Form Capture */}
+      <FormSheetModal visible={formVisible} onClose={() => setFormVisible(false)}>
+        <Field label="Item name" onChangeText={setName} value={name} />
+        <TactileButton title="Lock Target" onPress={handleSubmit} />
+      </FormSheetModal>
+    </AppScreen>
+  );
+}
+```
+
+Use code with caution.
+
+---
+
+### 4. Agent Conformance Instructions
+Prior to saving any codebase layout modification, execute a semantic audit:
+
+1. Verify no static data entry blocks occupy top-of-screen viewport positions.
+2. Confirm all button elements run spring-driven tactile interactions.
+3. Validate that negative behavioral metrics (deficits, overspends) actively modulate layout container animation values rather than standard color variables.

@@ -1,0 +1,204 @@
+---
+title: Budgeting & Wishlist App Specification
+description: Implementation-ready MVP product specification for a gamified budgeting and wishlist application.
+version: 1.1 (Refined MVP)
+---
+
+# Gamified Budget & Wishlist Application
+## Implementation-Ready MVP Specification
+
+<Callout type="info">
+  A supportive, Duolingo-inspired budgeting application designed to curb impulse buying by converting item costs into hours worked and rewarding consistent financial discipline without shaming the user.
+</Callout>
+
+### 1. Confirmed MVP Decisions
+
+* **Platform:** React Native with Expo, optimized for both Android and iOS.
+* **Navigation:** Expo Router.
+* **Persistence:** Local-only, offline-first storage using Zustand plus `AsyncStorage`.
+* **Currency:** ZAR is fixed for the MVP.
+* **Hourly Conversion:** The 160-hour working month is fixed for the MVP.
+* **Budget Cycle:** The app runs on a payday-based monthly cycle.
+* **V1 Scope:** Core budgeting, wishlist management, purchase flow, streaks, badges, trophy list, and celebration moments.
+* **Deferred for Later:** Receipt photo capture, OCR, scheduled cooldown notifications, cloud sync, and account authentication.
+
+### 2. Product Goal
+
+* Help the user pause impulse purchases before money leaves the account.
+* Reframe spending decisions in terms of hours worked, not only ZAR spent.
+* Make responsible spending feel earned and rewarding.
+* Keep the experience encouraging, readable, and lightweight enough to use daily.
+
+### 3. Non-Goals for V1
+
+* No bank account integrations.
+* No shared or family budgets.
+* No multi-device sync.
+* No custom currencies or configurable hourly-rate formulas.
+* No scheduled push or local notifications.
+
+### 4. Core Engine (Math & Budgeting)
+
+* **Onboarding Inputs:** The user provides monthly net pay, monthly payday, and recurring expenses during setup.
+* **Hourly Rate:** The app calculates the effective hourly rate from take-home pay.
+  * *Formula:* `Hourly Rate = Net Pay / 160`
+* **Budget Cycle:**
+  * Each cycle starts on the user's payday and ends the day before the next payday.
+  * If a payday falls on a day that does not exist in a given month, the cycle starts on that month's last day.
+* **Recurring Expenses:**
+  * Recurring expenses represent committed monthly costs and are treated as baseline deductions for the full cycle.
+  * V1 fields: `Name` and `Amount (ZAR)`.
+* **Manual Expenses:**
+  * Users can add, edit, and delete expense entries manually.
+  * V1 fields: `Name`, `Amount (ZAR)`, `Date`, and optional `Category`.
+* **Savings Bank:**
+  * The Savings Bank represents currently available purchasing power for the active cycle.
+  * *Formula:* `Net Pay + Previous Cycle Rollover - Total Recurring Expenses - Total Logged Expenses`
+  * Logged expenses include normal daily expenses and purchased wishlist items.
+* **Rollover Rule:**
+  * The closing Savings Bank from one cycle becomes the opening rollover for the next cycle.
+  * Positive rollover increases flexibility next month.
+  * Negative rollover carries debt pressure into the next cycle.
+* **Red Zone:**
+  * If the Savings Bank drops below zero, the user is in the Red Zone.
+  * While in the Red Zone, buying from the wishlist is locked.
+  * Supportive copy should explain the state without punishing language.
+
+### 5. Wishlist and Impulse Control
+
+* **Adding Items:**
+  * User inputs: `Item Name`, `Cost (ZAR)`, and an optional `URL`.
+  * The app displays the ZAR cost alongside a prominent **Hours Required** badge.
+  * *Formula:* `Hours Required = Item Cost / Hourly Rate`
+* **Affordability State:**
+  * A wishlist item becomes **Ready to Buy** when `Savings Bank >= Item Cost` and the user is not in the Red Zone.
+  * If the Savings Bank is positive but still below the item cost, the item remains visible with progress toward affordability.
+* **Impulse Control in V1:**
+  * Scheduled cooldown reminders are out of scope for V1.
+  * The app still supports impulse-control behavior by showing item age, purchase friction, and a deliberate delete action.
+  * Deleting an unpurchased wishlist item counts as an **impulse defeated** event for gamification.
+* **Purchasing Logic:**
+  * Clicking **Buy** is only possible when the item is affordable and the user is not in the Red Zone.
+  * Buying a wishlist item automatically creates an expense entry tagged as a wishlist purchase.
+  * Because purchases become logged expenses, they reduce the Savings Bank through the main budget formula rather than a separate balance system.
+  * The item moves from the active wishlist to the Purchased/Trophy list.
+* **Wishlist Editing Rules:**
+  * Users can edit or delete items while they are still in the wishlist.
+  * Purchased items become historical trophies and are not editable beyond optional delete/reset actions in settings.
+
+### 6. Gamification and Rewards
+
+<Card title="Reward Triggers">
+  Users earn streaks, badges, and visual rewards for positive financial behaviors:
+  - Opening the application daily.
+  - Consistently logging expenses.
+  - Defeating impulse buys by deleting wishlist items they decide not to buy.
+</Card>
+
+* **Daily Check-In Streak:**
+  * Incremented once per calendar day when the user opens the app.
+  * Resets after a missed day.
+* **Expense Logging Streak:**
+  * Incremented when the user logs at least one expense on consecutive days.
+  * Resets after a missed day.
+* **Impulse Defeat Count:**
+  * Incremented when the user deletes an unpurchased wishlist item.
+* **Badge Model for V1:**
+  * V1 should include a small, fixed set of badges with simple thresholds.
+  * Suggested initial thresholds: 3-day check-in streak, 7-day check-in streak, 7-day expense streak, first impulse defeat, and 5 impulse defeats.
+* **Milestone Celebrations:**
+  * When a wishlist item becomes affordable, the app shows an encouraging unlock state.
+  * Buying an item triggers a celebratory completion screen.
+  * Earning a badge triggers a lightweight celebration moment.
+* **Trophy List:**
+  * Purchased items become trophies with purchase date, ZAR cost, and hours-worked context.
+* **Future Vision:** A Tamagotchi-style companion can be layered onto the same reward system later.
+
+### 7. UX and Visual Direction
+
+* **Tone:** Supportive, playful, and motivating.
+* **Design Reference:** Duolingo-inspired energy, but adapted to personal finance.
+* **Readability Rule:** The app should prioritize clear numbers, clear lock states, and obvious next actions over decorative noise.
+* **Primary Dashboard Emphasis:**
+  * Savings Bank.
+  * Hours-worked context.
+  * Closest affordable wishlist item.
+  * Current streaks and recent wins.
+* **Color Semantics:**
+  * Safe/healthy balance uses green.
+  * Almost-affordable states can use amber.
+  * Red Zone must be visually obvious without feeling punitive.
+* **Copy Principle:** The app should never shame the user for overspending; it should frame setbacks as recoverable.
+
+### 8. Screen Map
+
+* **Onboarding Screen:** Capture net pay, payday, and recurring expenses.
+* **Dashboard Screen:** Show Savings Bank, hourly rate, Red Zone state, streaks, and affordability highlights.
+* **Expenses Screen:** Show expense list, add/edit/delete actions, and current-cycle totals.
+* **Wishlist Screen:** Show wishlist items, affordability progress, hours required, add/edit/delete actions, and buy action.
+* **Trophies Screen:** Show purchased items, earned badges, and motivational history.
+* **Settings Screen:** Allow editing income, payday, recurring expenses, and clearing local data.
+
+### 9. Local Data Model
+
+* **UserProfile**
+  * `netPayZar`
+  * `paydayDay`
+  * `createdAt`
+* **RecurringExpense**
+  * `id`
+  * `name`
+  * `amountZar`
+  * `isActive`
+* **ExpenseEntry**
+  * `id`
+  * `name`
+  * `amountZar`
+  * `date`
+  * `category`
+  * `source` (`manual` or `wishlist_purchase`)
+  * `wishlistItemId?`
+* **WishlistItem**
+  * `id`
+  * `name`
+  * `costZar`
+  * `url?`
+  * `createdAt`
+  * `status` (`active`, `purchased`, or `deleted`)
+  * `purchasedAt?`
+* **GamificationState**
+  * `lastAppOpenDate`
+  * `lastExpenseLogDate`
+  * `dailyCheckInStreak`
+  * `expenseLoggingStreak`
+  * `impulseDefeats`
+  * `earnedBadgeIds`
+
+### 10. Technical Implementation (MVP)
+
+* **Architecture:** Offline-first, local-only MVP.
+* **Framework:** React Native with Expo.
+* **Navigation:** Expo Router.
+* **State Management:** Zustand for app state, persisted with `AsyncStorage`.
+* **Computation Strategy:** Budget totals, affordability, Red Zone state, and streak status should be derived from persisted state instead of stored as duplicated values where possible.
+* **Deferred Modules:** Camera/media handling, notifications, sync, auth, and OCR remain intentionally excluded from V1.
+
+### 11. Acceptance Criteria
+
+* A new user can complete onboarding and immediately land on a functioning dashboard.
+* The app correctly calculates hourly rate from monthly net pay using the fixed 160-hour rule.
+* The app correctly calculates a payday-based active budget cycle and handles month-end edge cases.
+* The Savings Bank updates immediately when recurring expenses, manual expenses, or wishlist purchases change.
+* A wishlist item cannot be purchased unless it is affordable and the user is not in the Red Zone.
+* Buying a wishlist item moves it to the Trophy list and creates a linked expense entry.
+* Deleting an unpurchased wishlist item increases the impulse-defeat total.
+* Streaks and badges persist across app restarts.
+* All MVP data persists locally and remains usable offline.
+
+### 12. Recommended Build Order
+
+* Build the persisted data store and derived budgeting selectors first.
+* Implement onboarding and dashboard next.
+* Add expense management.
+* Add wishlist management and purchase flow.
+* Layer in streaks, badges, trophy list, and celebration UI after the core financial loop is stable.
