@@ -1,26 +1,23 @@
 import { Redirect } from 'expo-router';
 import { useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { StyleSheet, Text, View } from 'react-native';
 
 import {
-    AnimatedDeficitWrapper,
-    AppScreen,
-    BudgetShield,
-    EmptyState,
-    Field,
-    FloatingActionButton,
-    FormSheetModal,
-    PillButton,
-    SectionCard,
-    SectionHeading,
-    StatChip,
-    TactileButton,
+  AppScreen,
+  EmptyState,
+  Field,
+  FloatingActionButton,
+  FormSheetModal,
+  PillButton,
+  SectionCard,
+  SectionHeading,
+  TactileButton
 } from '@/components/AppUI';
 import { AppColors } from '@/constants/theme';
 import { getBudgetSnapshot } from '@/lib/budget';
 import { formatDateKey, isDateInRange } from '@/lib/dates';
 import { formatCurrency, formatFriendlyDate } from '@/lib/formatters';
-import { getCycleShieldLoad } from '@/lib/gamification';
 import { fireEntryCreatedHaptic } from '@/lib/haptics';
 import { useBudgetStore } from '@/store/useBudgetStore';
 
@@ -29,6 +26,13 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 function parseMoney(value: string): number {
   return Number.parseFloat(value.replace(/,/g, '').trim());
 }
+
+type ExpenseFormValues = {
+  name: string;
+  amount: string;
+  category: string;
+  date: string;
+};
 
 export default function ExpensesScreen() {
   const profile = useBudgetStore((state) => state.profile);
@@ -40,12 +44,20 @@ export default function ExpensesScreen() {
 
   const snapshot = getBudgetSnapshot({ profile, recurringExpenses, expenses });
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('');
-  const [date, setDate] = useState(formatDateKey(new Date()));
-  const [error, setError] = useState<string | null>(null);
   const [formVisible, setFormVisible] = useState(false);
+  const {
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ExpenseFormValues>({
+    defaultValues: {
+      name: '',
+      amount: '',
+      category: '',
+      date: formatDateKey(new Date()),
+    },
+  });
 
   if (!profile || !snapshot) {
     return <Redirect href="/onboarding" />;
@@ -54,44 +66,34 @@ export default function ExpensesScreen() {
   const currentCycleEntries = expenses.filter((expense) =>
     isDateInRange(expense.date, snapshot.activeCycleStart, snapshot.activeCycleEnd),
   );
-  const cycleShieldLoad = getCycleShieldLoad(snapshot, profile);
 
   const resetForm = () => {
     setEditingId(null);
-    setName('');
-    setAmount('');
-    setCategory('');
-    setDate(formatDateKey(new Date()));
-    setError(null);
+    reset({
+      name: '',
+      amount: '',
+      category: '',
+      date: formatDateKey(new Date()),
+    });
     setFormVisible(false);
   };
 
-  const handleSubmit = () => {
-    const parsedAmount = parseMoney(amount);
-
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      setError('Enter a valid expense amount.');
-      return;
-    }
-
-    if (!DATE_PATTERN.test(date)) {
-      setError('Use the date format YYYY-MM-DD.');
-      return;
-    }
+  const onSubmitForm = (values: ExpenseFormValues) => {
+    const parsedAmount = parseMoney(values.amount);
 
     if (editingId) {
       updateExpense(editingId, {
-        name,
+        name: values.name,
         amountZar: parsedAmount,
-        category,
-        date,
+        category: values.category,
+        date: values.date,
       });
     } else {
       addExpense({
-        name,
+        name: values.name,
         amountZar: parsedAmount,
-        category,
-        date,
+        category: values.category,
+        date: values.date,
       });
 
       void fireEntryCreatedHaptic();
@@ -105,69 +107,53 @@ export default function ExpensesScreen() {
       <AppScreen>
         <SectionHeading
           eyebrow="Expenses"
-          title="Log what actually left"
-          caption="Keep the ledger accurate."
+          title="Expense ledger"
+          caption="Log every spend quickly and move on."
         />
 
-        <AnimatedDeficitWrapper isActive={snapshot.isRedZone}>
-          <SectionCard accentColor={AppColors.amber} subtitle="Cycle spend and shield." title="Current cycle">
-            <View style={styles.statRow}>
-              <StatChip label="Cycle total" tone="amber" value={formatCurrency(snapshot.currentCycleExpensesTotal)} />
-              <StatChip label="Entries this cycle" tone="sky" value={`${currentCycleEntries.length}`} />
-              <StatChip label="Savings bank" tone={snapshot.isRedZone ? 'red' : 'lime'} value={formatCurrency(snapshot.savingsBank)} />
-            </View>
-            <BudgetShield
-              caption={
-                cycleShieldLoad >= 0.8
-                  ? 'Running hot. Focus essentials.'
-                  : 'Healthy. Keep logging.'
-              }
-              progress={cycleShieldLoad}
-              title="Cycle shield"
-            />
-          </SectionCard>
-        </AnimatedDeficitWrapper>
+        <View style={styles.summaryStrip}>
+          <Text style={styles.summaryText}>{`${formatCurrency(snapshot.currentCycleExpensesTotal)} this cycle`}</Text>
+          <Text style={styles.summaryDot}>•</Text>
+          <Text style={styles.summaryText}>{`${currentCycleEntries.length} entries`}</Text>
+        </View>
 
-        <SectionCard accentColor={AppColors.limeDark} subtitle="Manual entries are editable." title="Ledger">
+        <SectionCard accentColor={AppColors.limeDark} subtitle="Latest entries first." title="Ledger">
           {expenses.length === 0 ? (
             <EmptyState message="Your first expense makes the savings picture real." title="No expenses yet" />
           ) : (
             expenses.map((expense) => {
               const isManual = expense.source === 'manual';
+              const sourceLabel = isManual ? 'Manual' : 'Wishlist';
 
               return (
                 <View key={expense.id} style={styles.entryCard}>
                   <View style={styles.entryHeader}>
                     <View style={styles.entryTitleBlock}>
                       <Text style={styles.entryTitle}>{expense.name}</Text>
-                      <Text style={styles.entryMeta}>
-                        {formatFriendlyDate(expense.date)}
-                        {expense.category ? ` · ${expense.category}` : ''}
-                      </Text>
+                      <Text style={styles.entryMeta}>{`${formatFriendlyDate(expense.date)}${expense.category ? ` · ${expense.category}` : ''} · ${sourceLabel}`}</Text>
                     </View>
                     <Text style={styles.entryAmount}>{formatCurrency(expense.amountZar)}</Text>
                   </View>
 
                   <View style={styles.entryFooter}>
-                    <Text style={styles.entrySource}>{isManual ? 'Manual expense' : 'Wishlist purchase'}</Text>
                     {isManual ? (
                       <View style={styles.inlineActions}>
                         <PillButton
-                          label="Edit"
+                          label="Manage"
                           onPress={() => {
                             setEditingId(expense.id);
-                            setName(expense.name);
-                            setAmount(expense.amountZar.toString());
-                            setCategory(expense.category ?? '');
-                            setDate(expense.date);
-                            setError(null);
+                            reset({
+                              name: expense.name,
+                              amount: expense.amountZar.toString(),
+                              category: expense.category ?? '',
+                              date: expense.date,
+                            });
                             setFormVisible(true);
                           }}
                           small
                           fullWidth={false}
                           variant="secondary"
                         />
-                        <PillButton label="Delete" onPress={() => deleteExpense(expense.id)} small fullWidth={false} variant="ghost" />
                       </View>
                     ) : null}
                   </View>
@@ -176,37 +162,76 @@ export default function ExpensesScreen() {
             })
           )}
         </SectionCard>
+
       </AppScreen>
 
       <FloatingActionButton
         label="+"
         onPress={() => {
-          setEditingId(null);
-          setName('');
-          setAmount('');
-          setCategory('');
-          setDate(formatDateKey(new Date()));
-          setError(null);
+          resetForm();
           setFormVisible(true);
         }}
       />
 
       <FormSheetModal
         onClose={() => {
-          setFormVisible(false);
-          setEditingId(null);
-          setError(null);
+          resetForm();
         }}
         subtitle="Quick spend capture."
-        title={editingId ? 'Edit expense' : 'Capture expense'}
+        title={editingId ? 'Edit expense' : 'Add expense'}
         visible={formVisible}>
-        <Field label="What was it?" onChangeText={setName} placeholder="Groceries" value={name} />
-        <Field keyboardType="decimal-pad" label="Amount (ZAR)" onChangeText={setAmount} placeholder="450" value={amount} />
-        <Field label="Category (optional)" onChangeText={setCategory} placeholder="Food" value={category} />
-        <Field hint="Use YYYY-MM-DD." label="Date" onChangeText={setDate} placeholder="2026-06-30" value={date} />
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <Controller
+          control={control}
+          name="name"
+          render={({ field: { onChange, value } }) => (
+            <Field label="What was it?" onChangeText={onChange} placeholder="Groceries" value={value} />
+          )}
+        />
+        <Controller
+          control={control}
+          name="amount"
+          rules={{
+            validate: (value) => {
+              const parsed = parseMoney(value);
+              return Number.isFinite(parsed) && parsed > 0 ? true : 'Enter a valid expense amount.';
+            },
+          }}
+          render={({ field: { onChange, value } }) => (
+            <Field keyboardType="decimal-pad" label="Amount (ZAR)" onChangeText={onChange} placeholder="450" value={value} />
+          )}
+        />
+        <Controller
+          control={control}
+          name="category"
+          render={({ field: { onChange, value } }) => (
+            <Field label="Category (optional)" onChangeText={onChange} placeholder="Food" value={value} />
+          )}
+        />
+        <Controller
+          control={control}
+          name="date"
+          rules={{
+            validate: (value) => (DATE_PATTERN.test(value) ? true : 'Use the date format YYYY-MM-DD.'),
+          }}
+          render={({ field: { onChange, value } }) => (
+            <Field hint="Use YYYY-MM-DD." label="Date" onChangeText={onChange} placeholder="2026-06-30" value={value} />
+          )}
+        />
+        {errors.amount ? <Text style={styles.errorText}>{errors.amount.message}</Text> : null}
+        {!errors.amount && errors.date ? <Text style={styles.errorText}>{errors.date.message}</Text> : null}
         <View style={styles.actionRow}>
-          <TactileButton fullWidth={false} label={editingId ? 'Save Expense' : 'Log Expense'} onPress={handleSubmit} />
+          <TactileButton fullWidth={false} label={editingId ? 'Save' : 'Add'} onPress={handleSubmit(onSubmitForm)} />
+          {editingId ? (
+            <PillButton
+              fullWidth={false}
+              label="Delete"
+              onPress={() => {
+                deleteExpense(editingId);
+                resetForm();
+              }}
+              variant="danger"
+            />
+          ) : null}
           <PillButton fullWidth={false} label="Cancel" onPress={resetForm} variant="ghost" />
         </View>
       </FormSheetModal>
@@ -218,10 +243,27 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  statRow: {
+  summaryStrip: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    borderRadius: 999,
+    alignSelf: 'flex-start',
+    backgroundColor: AppColors.surfaceMuted,
+  },
+  summaryText: {
+    fontFamily: 'Nunito_700Bold',
+    fontSize: 12,
+    color: AppColors.mutedText,
+  },
+  summaryDot: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 10,
+    color: AppColors.mutedText,
   },
   errorText: {
     fontFamily: 'Nunito_700Bold',
@@ -235,8 +277,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   entryCard: {
-    gap: 12,
-    paddingVertical: 14,
+    gap: 6,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: AppColors.border,
   },
@@ -247,38 +289,33 @@ const styles = StyleSheet.create({
   },
   entryTitleBlock: {
     flex: 1,
-    gap: 4,
+    gap: 2,
   },
   entryTitle: {
     fontFamily: 'Nunito_800ExtraBold',
-    fontSize: 18,
+    fontSize: 15,
     color: AppColors.text,
   },
   entryMeta: {
     fontFamily: 'Nunito_400Regular',
-    fontSize: 13,
+    fontSize: 11,
     color: AppColors.mutedText,
   },
   entryAmount: {
     fontFamily: 'Nunito_800ExtraBold',
-    fontSize: 17,
+    fontSize: 14,
     color: AppColors.text,
   },
   entryFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-end',
     alignItems: 'center',
-    gap: 12,
-  },
-  entrySource: {
-    fontFamily: 'Nunito_700Bold',
-    fontSize: 13,
-    color: AppColors.mutedText,
+    gap: 6,
   },
   inlineActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
 });

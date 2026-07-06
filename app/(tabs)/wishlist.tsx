@@ -1,24 +1,22 @@
 import * as Linking from 'expo-linking';
 import { Redirect } from 'expo-router';
 import { useState } from 'react';
+import { Controller, useForm } from 'react-hook-form';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 
 import {
-  AnimatedDeficitWrapper,
   AppScreen,
   EmptyState,
   Field,
   FloatingActionButton,
   FormSheetModal,
   PillButton,
-  ProgressBar,
   SectionCard,
   SectionHeading,
-  StatChip,
   TactileButton,
 } from '@/components/AppUI';
 import { AppColors } from '@/constants/theme';
-import { computeHoursRequired, getAffordabilityProgress, getBudgetSnapshot, getWishlistInsight } from '@/lib/budget';
+import { computeHoursRequired, getBudgetSnapshot, getWishlistInsight } from '@/lib/budget';
 import { formatCurrency, formatFriendlyDate, formatHours } from '@/lib/formatters';
 import { fireEntryCreatedHaptic, fireVaultClearHaptic } from '@/lib/haptics';
 import { useBudgetStore } from '@/store/useBudgetStore';
@@ -26,6 +24,12 @@ import { useBudgetStore } from '@/store/useBudgetStore';
 function parseMoney(value: string): number {
   return Number.parseFloat(value.replace(/,/g, '').trim());
 }
+
+type WishlistFormValues = {
+  name: string;
+  cost: string;
+  url: string;
+};
 
 function normalizeUrl(value: string): string | undefined {
   const trimmed = value.trim();
@@ -49,46 +53,52 @@ export default function WishlistScreen() {
 
   const snapshot = getBudgetSnapshot({ profile, recurringExpenses, expenses });
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [name, setName] = useState('');
-  const [cost, setCost] = useState('');
-  const [url, setUrl] = useState('');
-  const [error, setError] = useState<string | null>(null);
   const [formVisible, setFormVisible] = useState(false);
+  const {
+    control,
+    handleSubmit,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm<WishlistFormValues>({
+    defaultValues: {
+      name: '',
+      cost: '',
+      url: '',
+    },
+  });
 
   if (!profile || !snapshot) {
     return <Redirect href="/onboarding" />;
   }
 
   const insight = getWishlistInsight(wishlistItems, snapshot);
+  const focusItem = insight.affordableItems[0] ?? insight.nextUnlockItem;
 
   const resetForm = () => {
     setEditingId(null);
-    setName('');
-    setCost('');
-    setUrl('');
-    setError(null);
+    reset({
+      name: '',
+      cost: '',
+      url: '',
+    });
     setFormVisible(false);
   };
 
-  const handleSubmit = () => {
-    const parsedCost = parseMoney(cost);
-
-    if (!Number.isFinite(parsedCost) || parsedCost <= 0) {
-      setError('Enter a valid wishlist cost.');
-      return;
-    }
+  const onSubmitForm = (values: WishlistFormValues) => {
+    const parsedCost = parseMoney(values.cost);
 
     if (editingId) {
       updateWishlistItem(editingId, {
-        name,
+        name: values.name,
         costZar: parsedCost,
-        url: normalizeUrl(url),
+        url: normalizeUrl(values.url),
       });
     } else {
       addWishlistItem({
-        name,
+        name: values.name,
         costZar: parsedCost,
-        url: normalizeUrl(url),
+        url: normalizeUrl(values.url),
       });
 
       void fireEntryCreatedHaptic();
@@ -123,50 +133,35 @@ export default function WishlistScreen() {
       <AppScreen>
         <SectionHeading
           eyebrow="Wishlist"
-          title="Make wants wait"
-          caption="Track wants before you buy."
+          title="Unlock queue"
+          caption="Track wants, wait, then buy with intent."
         />
 
-        <AnimatedDeficitWrapper isActive={snapshot.isRedZone}>
-          <SectionCard accentColor={AppColors.limeDark} subtitle="Unlock status and bank." title="Affordability snapshot">
-            <View style={styles.statRow}>
-              <StatChip label="Ready now" tone="lime" value={`${insight.affordableItems.length}`} />
-              <StatChip label="Active wishes" tone="sky" value={`${insight.activeItems.length}`} />
-              <StatChip label="Bank" tone={snapshot.isRedZone ? 'red' : 'amber'} value={formatCurrency(snapshot.savingsBank)} />
-            </View>
-          </SectionCard>
-        </AnimatedDeficitWrapper>
+        <View style={styles.summaryStrip}>
+          <Text style={styles.summaryText}>{`${insight.affordableItems.length} ready`}</Text>
+          <Text style={styles.summaryDot}>•</Text>
+          <Text style={styles.summaryText}>{`${Math.max(0, insight.activeItems.length - insight.affordableItems.length)} waiting`}</Text>
+        </View>
 
-        <SectionCard accentColor={AppColors.amber} subtitle="Active wishes." title="Wishlist board">
+        <SectionCard accentColor={AppColors.amber} subtitle="Active wishes, newest first." title="Wishlist board">
           {insight.activeItems.length === 0 ? (
             <EmptyState message="A clear wishlist is how the app starts turning temptation into a measured target." title="No active wishes" />
           ) : (
             insight.activeItems.map((item) => {
               const isAffordable = insight.affordableItems.some((entry) => entry.id === item.id);
               const hoursRequired = computeHoursRequired(item.costZar, snapshot.hourlyRate);
-              const amountRemaining = Math.max(0, item.costZar - snapshot.savingsBank);
 
               return (
                 <View key={item.id} style={styles.wishCard}>
                   <View style={styles.entryHeader}>
                     <View style={styles.entryTitleBlock}>
                       <Text style={styles.entryTitle}>{item.name}</Text>
-                      <Text style={styles.entryMeta}>{formatCurrency(item.costZar)} · {formatHours(hoursRequired)}</Text>
-                      <Text style={styles.entryMeta}>Added {formatFriendlyDate(item.createdAt)}</Text>
+                      <Text style={styles.entryMeta}>{`${formatCurrency(item.costZar)} · ${formatHours(hoursRequired)} · ${formatFriendlyDate(item.createdAt)}`}</Text>
                     </View>
                     <Text style={[styles.statusPill, isAffordable ? styles.statusPillReady : styles.statusPillWaiting]}>
                       {isAffordable ? 'Ready' : 'Waiting'}
                     </Text>
                   </View>
-
-                  <ProgressBar progress={getAffordabilityProgress(item.costZar, snapshot)} />
-                  <Text style={styles.supportText}>
-                    {snapshot.isRedZone
-                      ? 'Red Zone active. Buying is locked.'
-                      : isAffordable
-                        ? 'Unlocked. Buy now or wait.'
-                        : `${formatCurrency(amountRemaining)} still needed to unlock it.`}
-                  </Text>
 
                   <View style={styles.inlineActionsWrap}>
                     <PillButton
@@ -177,56 +172,105 @@ export default function WishlistScreen() {
                       small
                     />
                     <PillButton
-                      label="Edit"
+                      label="Manage"
                       onPress={() => {
                         setEditingId(item.id);
-                        setName(item.name);
-                        setCost(item.costZar.toString());
-                        setUrl(item.url ?? '');
-                        setError(null);
+                        reset({
+                          name: item.name,
+                          cost: item.costZar.toString(),
+                          url: item.url ?? '',
+                        });
                         setFormVisible(true);
                       }}
                       small
                       fullWidth={false}
                       variant="secondary"
                     />
-                    {item.url ? <PillButton label="Link" onPress={() => openLink(item.url)} small fullWidth={false} variant="ghost" /> : null}
-                    <PillButton label="Delete" onPress={() => deleteWishlistItem(item.id)} small fullWidth={false} variant="ghost" />
                   </View>
                 </View>
               );
             })
           )}
         </SectionCard>
+
+        {focusItem ? (
+          <Text style={styles.focusLine}>
+            {`Next unlock: ${focusItem.name} · ${formatCurrency(focusItem.costZar)} · ${formatHours(computeHoursRequired(focusItem.costZar, snapshot.hourlyRate))}`}
+          </Text>
+        ) : null}
       </AppScreen>
 
       <FloatingActionButton
         label="+"
         onPress={() => {
           setEditingId(null);
-          setName('');
-          setCost('');
-          setUrl('');
-          setError(null);
+          reset({
+            name: '',
+            cost: '',
+            url: '',
+          });
           setFormVisible(true);
         }}
       />
 
       <FormSheetModal
         onClose={() => {
-          setFormVisible(false);
-          setEditingId(null);
-          setError(null);
+          resetForm();
         }}
         subtitle="Quick wishlist capture."
-        title={editingId ? 'Edit wish' : 'Capture wish'}
+        title={editingId ? 'Edit wish' : 'Add wish'}
         visible={formVisible}>
-        <Field label="Item name" onChangeText={setName} placeholder="Noise-cancelling headphones" value={name} />
-        <Field keyboardType="decimal-pad" label="Cost (ZAR)" onChangeText={setCost} placeholder="3499" value={cost} />
-        <Field label="URL (optional)" onChangeText={setUrl} placeholder="https://store.example/item" value={url} />
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        <Controller
+          control={control}
+          name="name"
+          render={({ field: { onChange, value } }) => (
+            <Field label="Item name" onChangeText={onChange} placeholder="Noise-cancelling headphones" value={value} />
+          )}
+        />
+        <Controller
+          control={control}
+          name="cost"
+          rules={{
+            validate: (value) => {
+              const parsed = parseMoney(value);
+              return Number.isFinite(parsed) && parsed > 0 ? true : 'Enter a valid wishlist cost.';
+            },
+          }}
+          render={({ field: { onChange, value } }) => (
+            <Field keyboardType="decimal-pad" label="Cost (ZAR)" onChangeText={onChange} placeholder="3499" value={value} />
+          )}
+        />
+        <Controller
+          control={control}
+          name="url"
+          render={({ field: { onChange, value } }) => (
+            <Field label="URL (optional)" onChangeText={onChange} placeholder="https://store.example/item" value={value} />
+          )}
+        />
+        {errors.cost ? <Text style={styles.errorText}>{errors.cost.message}</Text> : null}
         <View style={styles.actionRow}>
-          <TactileButton fullWidth={false} label={editingId ? 'Save Wish' : 'Lock Wish'} onPress={handleSubmit} />
+          <TactileButton fullWidth={false} label={editingId ? 'Save' : 'Add'} onPress={handleSubmit(onSubmitForm)} />
+          {editingId ? (
+            <PillButton
+              fullWidth={false}
+              label="Delete"
+              onPress={() => {
+                deleteWishlistItem(editingId);
+                resetForm();
+              }}
+              variant="danger"
+            />
+          ) : null}
+          {editingId && watch('url') ? (
+            <PillButton
+              fullWidth={false}
+              label="Open"
+              onPress={() => {
+                void openLink(normalizeUrl(watch('url') ?? ''));
+              }}
+              variant="secondary"
+            />
+          ) : null}
           <PillButton fullWidth={false} label="Cancel" onPress={resetForm} variant="ghost" />
         </View>
       </FormSheetModal>
@@ -238,10 +282,32 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  statRow: {
+  summaryStrip: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    borderRadius: 999,
+    alignSelf: 'flex-start',
+    backgroundColor: AppColors.surfaceMuted,
+  },
+  summaryText: {
+    fontFamily: 'Nunito_700Bold',
+    fontSize: 12,
+    color: AppColors.mutedText,
+  },
+  summaryDot: {
+    fontFamily: 'Nunito_800ExtraBold',
+    fontSize: 10,
+    color: AppColors.mutedText,
+  },
+  focusLine: {
+    fontFamily: 'Nunito_700Bold',
+    fontSize: 12,
+    color: AppColors.mutedText,
   },
   errorText: {
     fontFamily: 'Nunito_700Bold',
@@ -255,8 +321,8 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   wishCard: {
-    gap: 12,
-    paddingVertical: 14,
+    gap: 6,
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: AppColors.border,
   },
@@ -267,25 +333,25 @@ const styles = StyleSheet.create({
   },
   entryTitleBlock: {
     flex: 1,
-    gap: 4,
+    gap: 2,
   },
   entryTitle: {
     fontFamily: 'Nunito_800ExtraBold',
-    fontSize: 19,
+    fontSize: 15,
     color: AppColors.text,
   },
   entryMeta: {
     fontFamily: 'Nunito_400Regular',
-    fontSize: 13,
+    fontSize: 11,
     color: AppColors.mutedText,
   },
   statusPill: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 999,
     fontFamily: 'Nunito_800ExtraBold',
-    fontSize: 13,
+    fontSize: 11,
     overflow: 'hidden',
   },
   statusPillReady: {
@@ -296,16 +362,10 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.goldSurface,
     color: AppColors.text,
   },
-  supportText: {
-    fontFamily: 'Nunito_400Regular',
-    fontSize: 14,
-    lineHeight: 20,
-    color: AppColors.mutedText,
-  },
   inlineActionsWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
   },
 });

@@ -1,6 +1,6 @@
 import { Redirect, router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, StyleSheet, Text, View } from 'react-native';
+import { Alert, Platform, StyleSheet, Text, View } from 'react-native';
 
 import { AppScreen, Field, PillButton, SectionCard, SectionHeading } from '@/components/AppUI';
 import { AppColors, themePresets } from '@/constants/theme';
@@ -98,6 +98,23 @@ export default function SettingsScreen() {
   };
 
   const handleReset = () => {
+    const runReset = () => {
+      resetAllData();
+      router.replace('/onboarding');
+    };
+
+    if (Platform.OS === 'web') {
+      const confirmed = typeof window !== 'undefined'
+        ? window.confirm('Reset local data? This clears your budget, wishlist, badges, and history from this device only.')
+        : false;
+
+      if (confirmed) {
+        runReset();
+      }
+
+      return;
+    }
+
     Alert.alert('Reset local data?', 'This clears your budget, wishlist, badges, and history from this device only.', [
       {
         text: 'Cancel',
@@ -106,16 +123,13 @@ export default function SettingsScreen() {
       {
         text: 'Reset',
         style: 'destructive',
-        onPress: () => {
-          resetAllData();
-          router.replace('/onboarding');
-        },
+        onPress: runReset,
       },
     ]);
   };
 
   return (
-    <AppScreen>
+    <AppScreen bottomInset={20}>
       <SectionHeading
         eyebrow="Settings"
         title="Tune the plan"

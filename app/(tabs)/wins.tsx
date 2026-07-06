@@ -29,10 +29,10 @@ export default function WinsScreen() {
       <SectionHeading
         eyebrow="Wins"
         title="Proof that the plan is working"
-        caption="Badges, trophies, and impulse wins."
+        caption="Review progress and keep momentum high."
       />
 
-      <SectionCard accentColor={AppColors.limeDark} subtitle="Momentum at a glance." title="Progress summary">
+      <SectionCard accentColor={AppColors.limeDark} subtitle="Scan your progress in one glance." title="Progress summary">
         <View style={styles.statRow}>
           <StatChip label="Badges" tone="sky" value={`${earnedBadges.length}`} />
           <StatChip label="Trophies" tone="amber" value={`${insight.purchasedItems.length}`} />

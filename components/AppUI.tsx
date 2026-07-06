@@ -29,6 +29,7 @@ import { useBudgetStore } from '@/store/useBudgetStore';
 type AppScreenProps = {
   children: ReactNode;
   scroll?: boolean;
+  bottomInset?: number;
   contentContainerStyle?: StyleProp<ViewStyle>;
 };
 
@@ -92,6 +93,7 @@ type FormSheetModalProps = {
 type FloatingActionButtonProps = {
   label: string;
   onPress: () => void;
+  size?: 'compact' | 'regular';
 };
 
 type AnimatedDeficitWrapperProps = {
@@ -140,17 +142,21 @@ function useThemeColors() {
   return useMemo(() => getThemeColors(appTheme), [appTheme]);
 }
 
-export function AppScreen({ children, scroll = true, contentContainerStyle }: AppScreenProps) {
+export function AppScreen({ children, scroll = true, bottomInset = 120, contentContainerStyle }: AppScreenProps) {
   const colors = useThemeColors();
+  const baseContentStyle = useMemo(
+    () => [styles.screenContent, { paddingBottom: bottomInset }] as const,
+    [bottomInset],
+  );
 
   const content = scroll ? (
     <ScrollView
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={[styles.screenContent, contentContainerStyle]}>
+      contentContainerStyle={[baseContentStyle, contentContainerStyle]}>
       {children}
     </ScrollView>
   ) : (
-    <View style={[styles.screenContent, contentContainerStyle]}>{children}</View>
+    <View style={[baseContentStyle, contentContainerStyle]}>{children}</View>
   );
 
   return (
@@ -222,8 +228,8 @@ export function PillButton({
   const shouldFillWidth = fullWidth ?? !small;
   const buttonDepth = small ? 4 : 6;
   const inlineWidth = Math.max(
-    small ? 94 : 118,
-    Math.min(small ? 240 : 360, label.length * (small ? 8.5 : 10) + (small ? 34 : 44)),
+    small ? 112 : 118,
+    Math.min(small ? 270 : 360, label.length * (small ? 9.5 : 10) + (small ? 38 : 44)),
   );
   const { backgroundColor, borderColor, shadowColor, textColor } = getButtonPalette(variant);
   const offsetY = useSharedValue(0);
@@ -271,7 +277,7 @@ export function PillButton({
         ]}>
         <Text
           adjustsFontSizeToFit
-          minimumFontScale={0.62}
+          minimumFontScale={small ? 0.74 : 0.62}
           numberOfLines={1}
           style={[styles.buttonLabel, small && styles.buttonLabelSmall, { color: textColor }]}>
           {label}
@@ -436,9 +442,13 @@ export function FormSheetModal({ visible, onClose, title, subtitle, children }: 
   );
 }
 
-export function FloatingActionButton({ label, onPress }: FloatingActionButtonProps) {
+export function FloatingActionButton({ label, onPress, size = 'compact' }: FloatingActionButtonProps) {
   const colors = useThemeColors();
-  const buttonDepth = 6;
+  const isCompact = size === 'compact';
+  const buttonDepth = isCompact ? 4 : 6;
+  const faceSize = isCompact ? 58 : 72;
+  const radius = faceSize / 2;
+  const shellSize = faceSize + buttonDepth;
   const offsetY = useSharedValue(0);
 
   const animatedStyle = useAnimatedStyle(() => ({
@@ -458,10 +468,32 @@ export function FloatingActionButton({ label, onPress }: FloatingActionButtonPro
         onPressOut={() => {
           offsetY.value = withSpring(0, AppMotion.springElastic);
         }}
-        style={[styles.fabShell, { paddingBottom: buttonDepth }]}>
-        <View style={[styles.fabShadowLayer, { top: buttonDepth, borderColor: colors.border, backgroundColor: '#0B7A55' }]} />
-        <Animated.View style={[styles.fabFace, { bottom: buttonDepth, borderColor: colors.border, backgroundColor: colors.limeDark }, animatedStyle]}>
-          <Text style={[styles.fabLabel, { color: colors.text }]}>{label}</Text>
+        style={[styles.fabShell, { width: shellSize, minHeight: shellSize + buttonDepth, paddingBottom: buttonDepth }]}>
+        <View
+          style={[
+            styles.fabShadowLayer,
+            {
+              top: buttonDepth,
+              borderColor: colors.border,
+              backgroundColor: colors.surfaceRaised,
+              height: faceSize,
+              borderRadius: radius,
+            },
+          ]}
+        />
+        <Animated.View
+          style={[
+            styles.fabFace,
+            {
+              bottom: buttonDepth,
+              borderColor: colors.border,
+              backgroundColor: colors.limeDark,
+              height: faceSize,
+              borderRadius: radius,
+            },
+            animatedStyle,
+          ]}>
+          <Text style={[styles.fabLabel, { color: colors.text, fontSize: isCompact ? 30 : 38, lineHeight: isCompact ? 32 : 40 }]}>{label}</Text>
         </Animated.View>
       </Pressable>
     </View>
@@ -504,9 +536,8 @@ const styles = StyleSheet.create({
   },
   screenContent: {
     paddingHorizontal: 18,
-    paddingTop: 24,
-    paddingBottom: 120,
-    gap: 18,
+    paddingTop: 18,
+    gap: 14,
   },
   loadingScreen: {
     flex: 1,
@@ -536,7 +567,7 @@ const styles = StyleSheet.create({
     color: AppColors.text,
   },
   sectionHeading: {
-    gap: 8,
+    gap: 6,
   },
   eyebrow: {
     fontFamily: 'Nunito_800ExtraBold',
@@ -547,23 +578,23 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: 'Nunito_800ExtraBold',
-    fontSize: 30,
-    lineHeight: 34,
+    fontSize: 26,
+    lineHeight: 30,
     color: AppColors.text,
   },
   sectionCaption: {
     fontFamily: 'Nunito_400Regular',
-    fontSize: 15,
-    lineHeight: 22,
+    fontSize: 13,
+    lineHeight: 18,
     color: AppColors.mutedText,
   },
   cardShell: {
     position: 'relative',
-    paddingBottom: 8,
+    paddingBottom: 6,
   },
   cardShadowLayer: {
     position: 'absolute',
-    top: 8,
+    top: 6,
     right: 0,
     bottom: 0,
     left: 0,
@@ -573,8 +604,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: AppColors.surface,
     borderRadius: AppRadii.card,
-    padding: 20,
-    gap: 12,
+    padding: 16,
+    gap: 10,
     borderWidth: 3,
     borderColor: AppColors.border,
     shadowColor: AppColors.shadow,
@@ -655,6 +686,7 @@ const styles = StyleSheet.create({
   },
   buttonLabelSmall: {
     fontSize: 13,
+    letterSpacing: 0.3,
   },
   fieldGroup: {
     gap: 8,
@@ -859,33 +891,27 @@ const styles = StyleSheet.create({
   },
   fabContainer: {
     position: 'absolute',
-    right: 18,
-    bottom: 22,
+    right: 14,
+    bottom: 16,
     zIndex: 20,
   },
   fabShell: {
     position: 'relative',
-    width: 78,
-    minHeight: 84,
   },
   fabShadowLayer: {
     position: 'absolute',
     right: 0,
     left: 0,
     bottom: 0,
-    height: 72,
-    borderRadius: 36,
     borderWidth: 3,
     borderColor: AppColors.border,
-    backgroundColor: '#0B7A55',
+    backgroundColor: AppColors.surfaceRaised,
   },
   fabFace: {
     position: 'absolute',
     top: 0,
     right: 0,
     left: 0,
-    height: 72,
-    borderRadius: 36,
     borderWidth: 3,
     borderColor: AppColors.border,
     backgroundColor: AppColors.limeDark,
@@ -894,8 +920,8 @@ const styles = StyleSheet.create({
   },
   fabLabel: {
     fontFamily: 'Nunito_800ExtraBold',
-    fontSize: 38,
-    lineHeight: 40,
+    fontSize: 30,
+    lineHeight: 32,
     color: AppColors.text,
     textAlign: 'center',
   },

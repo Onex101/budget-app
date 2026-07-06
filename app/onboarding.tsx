@@ -35,11 +35,9 @@ export default function OnboardingScreen() {
   const [recurringDrafts, setRecurringDrafts] = useState<RecurringDraft[]>([
     makeDraft('Rent'),
     makeDraft('Transport'),
-    makeDraft('Internet'),
   ]);
   const [error, setError] = useState<string | null>(null);
   const [stepIndex, setStepIndex] = useState(0);
-  const [activeRecurringIndex, setActiveRecurringIndex] = useState(0);
 
   if (!hasHydrated) {
     return null;
@@ -56,24 +54,20 @@ export default function OnboardingScreen() {
   const removeDraft = (id: string) => {
     setRecurringDrafts((current) => {
       const next = current.filter((draft) => draft.id !== id);
-      const safeNext = next.length > 0 ? next : [makeDraft()];
-      setActiveRecurringIndex((value) => Math.min(value, safeNext.length - 1));
-
-      return safeNext;
+      return next.length > 0 ? next : [makeDraft()];
     });
   };
 
   const addDraft = () => {
-    setRecurringDrafts((current) => {
-      const next = [...current, makeDraft()];
-      setActiveRecurringIndex(next.length - 1);
-      return next;
-    });
+    setRecurringDrafts((current) => [...current, makeDraft()]);
+  };
+
+  const addPresetDraft = (name: string) => {
+    setRecurringDrafts((current) => [...current, makeDraft(name)]);
   };
 
   const totalSteps = 3;
   const isFinalStep = stepIndex === totalSteps - 1;
-  const activeRecurringDraft = recurringDrafts[activeRecurringIndex] ?? recurringDrafts[0];
 
   const handleSubmit = () => {
     const parsedNetPay = parseMoney(netPay);
@@ -104,7 +98,7 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <AppScreen contentContainerStyle={styles.screenContent} scroll={false}>
+    <AppScreen bottomInset={20} contentContainerStyle={styles.screenContent} scroll={false}>
       <View style={styles.topBlock}>
         <SectionHeading
           eyebrow={`Start here · Step ${stepIndex + 1} of ${totalSteps}`}
@@ -139,55 +133,40 @@ export default function OnboardingScreen() {
           </SectionCard>
         ) : null}
 
-        {stepIndex === 2 && activeRecurringDraft ? (
+        {stepIndex === 2 ? (
           <SectionCard accentColor={AppColors.amber} title="Recurring monthly costs">
-            <Text style={styles.helper}>One item at a time. Leave blank if not needed.</Text>
-            <Text style={styles.rowCounter}>{`Item ${activeRecurringIndex + 1} of ${recurringDrafts.length}`}</Text>
-
-            <View style={styles.recurringBlock}>
-              <Field
-                label="Expense name"
-                onChangeText={(value) => updateDraft(activeRecurringDraft.id, { name: value })}
-                placeholder="Rent"
-                value={activeRecurringDraft.name}
-              />
-              <Field
-                keyboardType="decimal-pad"
-                label="Amount (ZAR)"
-                onChangeText={(value) => updateDraft(activeRecurringDraft.id, { amount: value })}
-                placeholder="6500"
-                value={activeRecurringDraft.amount}
-              />
-            </View>
+            <Text style={styles.helper}>Add your fixed monthly costs. Leave amount blank to skip a row.</Text>
 
             <View style={styles.rowActionsWrap}>
-              <PillButton
-                disabled={activeRecurringIndex === 0}
-                fullWidth={false}
-                label="Previous"
-                onPress={() => setActiveRecurringIndex((value) => Math.max(0, value - 1))}
-                small
-                variant="ghost"
-              />
-              <PillButton
-                disabled={activeRecurringIndex >= recurringDrafts.length - 1}
-                fullWidth={false}
-                label="Next"
-                onPress={() =>
-                  setActiveRecurringIndex((value) => Math.min(recurringDrafts.length - 1, value + 1))
-                }
-                small
-                variant="secondary"
-              />
-              <PillButton fullWidth={false} label="Add row" onPress={addDraft} small variant="secondary" />
-              <PillButton
-                fullWidth={false}
-                label="Remove"
-                onPress={() => removeDraft(activeRecurringDraft.id)}
-                small
-                variant="ghost"
-              />
+              <PillButton fullWidth={false} label="+ Rent" onPress={() => addPresetDraft('Rent')} small variant="secondary" />
+              <PillButton fullWidth={false} label="+ Transport" onPress={() => addPresetDraft('Transport')} small variant="secondary" />
+              <PillButton fullWidth={false} label="+ Internet" onPress={() => addPresetDraft('Internet')} small variant="secondary" />
+              <PillButton fullWidth={false} label="+ Custom" onPress={addDraft} small variant="ghost" />
             </View>
+
+            {recurringDrafts.map((draft, index) => (
+              <View key={draft.id} style={styles.recurringRowCard}>
+                <Text style={styles.rowCounter}>{`Cost ${index + 1}`}</Text>
+                <View style={styles.recurringBlock}>
+                  <Field
+                    label="Expense name"
+                    onChangeText={(value) => updateDraft(draft.id, { name: value })}
+                    placeholder="Rent"
+                    value={draft.name}
+                  />
+                  <Field
+                    keyboardType="decimal-pad"
+                    label="Amount (ZAR)"
+                    onChangeText={(value) => updateDraft(draft.id, { amount: value })}
+                    placeholder="6500"
+                    value={draft.amount}
+                  />
+                  <View style={styles.rowActionsWrap}>
+                    <PillButton fullWidth={false} label="Remove" onPress={() => removeDraft(draft.id)} small variant="ghost" />
+                  </View>
+                </View>
+              </View>
+            ))}
           </SectionCard>
         ) : null}
       </View>
@@ -263,6 +242,14 @@ const styles = StyleSheet.create({
   recurringBlock: {
     gap: 10,
     paddingTop: 2,
+  },
+  recurringRowCard: {
+    borderWidth: 1,
+    borderColor: AppColors.border,
+    borderRadius: 14,
+    padding: 10,
+    gap: 8,
+    backgroundColor: AppColors.surfaceMuted,
   },
   rowCounter: {
     fontFamily: 'Nunito_700Bold',
