@@ -145,8 +145,12 @@ function useThemeColors() {
 export function AppScreen({ children, scroll = true, bottomInset = 120, contentContainerStyle }: AppScreenProps) {
   const colors = useThemeColors();
   const baseContentStyle = useMemo(
-    () => [styles.screenContent, { paddingBottom: bottomInset }] as const,
-    [bottomInset],
+    () => [
+      styles.screenContent,
+      scroll ? styles.screenContentScroll : styles.screenContentStatic,
+      { paddingBottom: bottomInset },
+    ] as const,
+    [bottomInset, scroll],
   );
 
   const content = scroll ? (
@@ -538,6 +542,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 18,
     gap: 14,
+  },
+  screenContentScroll: {
+    flexGrow: 1,
+  },
+  screenContentStatic: {
+    flex: 1,
   },
   loadingScreen: {
     flex: 1,
